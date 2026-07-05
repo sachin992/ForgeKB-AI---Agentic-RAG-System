@@ -1,0 +1,30 @@
+fastapi==0.116.1
+uvicorn[standard]==0.35.0
+python-multipart==0.0.20
+sqlalchemy==2.0.41
+pydantic-settings==2.10.1
+email-validator==2.3.0
+python-json-logger==2.0.7
+slowapi==0.1.9
+redis==5.0.8
+celery==5.4.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
+python-jose[cryptography]==3.3.0
+pymysql==1.1.1
+
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.3.1+cpu ; platform_system == "Linux"
+
+langchain==0.3.27
+langchain-openai==0.3.28
+langchain-community==0.3.27
+langgraph==0.6.2
+faiss-cpu==1.11.0
+sentence-transformers==3.0.1
+rank-bm25==0.2.2
+
+opentelemetry-instrumentation==0.50b0
+opentelemetry-instrumentation-fastapi==0.50b0
+pypdf==5.9.0
+python-docx==1.2.0

@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+*.log
+node_modules/
+.next/
+venv/
+.venv/
+mysql_data/
+data/faiss/

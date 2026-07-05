@@ -1,0 +1,10 @@
+[
+  {
+    "question": "What is the retention policy described in the uploaded policy file?",
+    "expected_source": "policy"
+  },
+  {
+    "question": "Summarize the onboarding checklist from docs.",
+    "expected_source": "onboarding"
+  }
+]

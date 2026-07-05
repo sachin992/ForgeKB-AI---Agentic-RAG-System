@@ -1,0 +1,72 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: smart_rag_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: rag_db
+      MYSQL_USER: rag_user
+      MYSQL_PASSWORD: rag_password
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  backend:
+    build:
+      context: ./backend
+    container_name: smart_rag_backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    volumes:
+      - ./backend/app:/app/app
+      - ./data:/workspace/data
+      - ./eval:/workspace/eval
+    ports:
+      - "8001:8000"
+    depends_on:
+      - mysql
+      - redis
+
+  worker:
+    build:
+      context: ./backend
+    container_name: smart_rag_worker
+    restart: unless-stopped
+    command: celery -A app.worker.celery_app worker -Q ingestion --loglevel=info
+    env_file:
+      - ./backend/.env
+    volumes:
+      - ./backend/app:/app/app
+      - ./data:/workspace/data
+      - ./eval:/workspace/eval
+    depends_on:
+      - mysql
+      - redis
+
+  redis:
+    image: redis:7-alpine
+    container_name: smart_rag_redis
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: smart_rag_frontend
+    restart: unless-stopped
+    environment:
+      VITE_API_BASE: http://localhost:8001/api
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "3001:3000"
+    depends_on:
+      - backend
+
+volumes:
+  mysql_data:
