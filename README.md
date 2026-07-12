@@ -1,191 +1,333 @@
-# ForgeKB AI - Agentic RAG System (GenAI Engineer Project)
+# ForgeKB AI - Agentic RAG System
 
-ForgeKB AI is an end-to-end Agentic AI + RAG platform I built using Python and FastAPI, with LangChain and LangGraph as the core orchestration layer and LangSmith-ready tracing hooks.
 
-This project demonstrates practical GenAI engineering patterns: role-based knowledge isolation, asynchronous ingestion, hybrid retrieval, grounded generation, and streaming UX.
+
+![Project Status](https://img.shields.io/badge/status-active-green)
+
+![Python](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.116-009688?logo=fastapi&logoColor=white)
+![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
+
+## Overview
+
+ForgeKB AI is an end-to-end Agentic AI + RAG system built for production-style retrieval workflows.
+It supports role-based data visibility, async ingestion with telemetry, hybrid retrieval, and streaming responses with citations/confidence signals.
+
+This project demonstrates practical applied GenAI engineering:
+
+- Multi-step retrieval orchestration with LangGraph
+- Tooling-powered retrieval/generation with LangChain
+- Hybrid search (FAISS semantic + BM25 keyword fusion)
+- Async ingestion and re-indexing with Celery + Redis
+- Role-aware access control (admin global knowledge, user private knowledge)
+- End-to-end full-stack delivery with React dashboards
+
+### Key Features
+
+- **Agentic Retrieval Flow**: Query analysis, routing strategy, and contextual retrieval before generation
+- **Hybrid Search Pipeline**: FAISS + BM25 fusion with optional cross-encoder reranking
+- **Grounded Answers**: Citation-aware responses with confidence metadata
+- **Streaming UX**: SSE token stream plus structured events (`session`, `token`, `confidence`, `citations`, `done`)
+- **Asynchronous Ingestion**: Background indexing tasks with progress/stage telemetry
+- **Role-Based Governance**: Visibility-aware retrieval and file operations for admin/user scopes
+- **Evaluation Endpoint**: Built-in evaluation route backed by dataset configuration
+
+## Architecture
+
+### Technology Stack
+
+#### Frontend
+- **React 18 + Vite 5** - SPA frontend with fast development and build tooling
+- **React Router 6** - Client-side navigation
+- **TanStack Query** - Async API state management
+- **Zustand** - Lightweight client state management
+- **Ant Design** - UI component system
+
+#### Backend
+- **FastAPI** - High-performance Python API framework
+- **LangGraph** - Agentic state-based orchestration
+- **LangChain** - LLM and retrieval integration
+- **Celery + Redis** - Async task queue for ingestion/re-indexing
+- **MySQL + SQLAlchemy** - Application persistence layer
+- **FAISS + sentence-transformers + rank-bm25** - Retrieval and ranking stack
+- **LangSmith-ready tracing hooks** - Optional LLM observability integration
+
+### System Architecture
+
+```text
+┌─────────────┐
+│ React + Vite│ ← User Interface
+│  Frontend   │
+└──────┬──────┘
+		 │ HTTP/SSE
+		 ▼
+┌─────────────────────────────────────┐
+│         FastAPI Backend             │
+│  ┌─────────────────────────────┐   │
+│  │   LangGraph Orchestrator    │   │
+│  │  ┌─────────────────────┐    │   │
+│  │  │ Query Analysis Node │    │   │
+│  │  │ Retrieval Node      │    │   │
+│  │  │ Chat Service (LLM)  │    │   │
+│  │  └─────────────────────┘    │   │
+│  └─────────────────────────────┘   │
+│                                      │
+│  ┌──────────┐  ┌──────────┐        │
+│  │ Celery   │  │   Redis  │        │
+│  │ Workers  │  │  Broker  │        │
+│  └──────────┘  └──────────┘        │
+└─────────────────────────────────────┘
+			│
+			▼
+┌─────────────────┐
+│      MySQL      │ ← Users, sessions, docs, audit, feedback
+│   + FAISS Disk  │ ← Vector index + chunk manifest
+└─────────────────┘
+```
+
+## Project Structure
+
+```text
+ForgeKB AI - Agentic RAG System/
+├── backend/
+│   ├── app/
+│   │   ├── api/routes/         # Auth, chat, history, admin, ingestion, eval
+│   │   ├── core/               # App settings and security utilities
+│   │   ├── db/                 # SQLAlchemy models and DB session
+│   │   ├── services/rag/       # Graph, retrieval, ingestion, guardrails
+│   │   ├── tasks.py            # Celery ingestion task
+│   │   ├── worker.py           # Celery app config
+│   │   └── main.py             # FastAPI entrypoint
+│   ├── .env.example
+│   ├── requirements.txt
+│   └── Dockerfile
+├── frontend/
+│   ├── src/pages/              # Login, register, app and admin pages
+│   ├── lib/api.ts              # Typed frontend API client
+│   ├── package.json
+│   └── Dockerfile
+├── data/
+│   ├── faiss/                  # index.faiss + chunks_manifest.json
+│   └── uploads/                # admin and user uploaded documents
+├── eval/
+│   └── eval_dataset.json
+├── docker-compose.yml
+└── README.md
+```
+
+## Skills Demonstrated
+
+ATS keywords: Generative AI, Agentic AI, RAG, LangChain, LangGraph, Prompt Engineering, Retrieval Engineering, FAISS, BM25, FastAPI, Python, Celery, Redis, SQLAlchemy, MySQL, SSE Streaming, Observability, Role-Based Access Control, React, TypeScript, Docker Compose.
 
 ## Product Screenshots
 
 ### Login
-
 ![Login Page](docs/LOGIN_Page.png)
 
 ### Signup
-
 ![Signup Page](docs/SIGNUP_Page.png)
 
 ### User Dashboard
-
 ![User Dashboard](docs/USER_Page.png)
 
 ### Admin User Management
-
 ![Admin User Management](docs/ADMIN_User_Management_Page.png)
 
 ### Admin Knowledge Base Management
-
 ![Admin Knowledge Base Management](docs/ADMIN_Knowledge_Base_Management_Dashboard.png)
 
-## What This Project Demonstrates
+## Quick Start
 
-- Building production-style RAG APIs with FastAPI and Python
-- Designing an agentic retrieval workflow with LangGraph
-- Implementing retrieval and generation chains with LangChain
-- Integrating observability hooks for LangSmith tracing
-- Running a complete local stack with Docker Compose
+### Prerequisites
 
-## Core Tech Stack
+- **Node.js 18+** (frontend)
+- **Python 3.11+** (backend)
+- **Docker & Docker Compose** (recommended)
+- **Git** (optional, for development workflows)
 
-- Language: Python
-- API Layer: FastAPI
-- Agentic Orchestration: LangGraph
-- LLM and Retrieval Framework: LangChain
-- Tracing/Observability: LangSmith hooks + structured logs
-- Vector Store: FAISS (local)
-- Hybrid Search: FAISS semantic + BM25 keyword fusion
-- Async Task Queue: Celery + Redis
-- Data Layer: MySQL (users, sessions, feedback, datasource registry, audit)
-- Frontend: React + Vite + Ant Design
+### Option 1: Docker Compose (Recommended)
 
-## Agentic AI Architecture
+1. **Clone the repository**
+	```bash
+	git clone <your-repo-url>
+	cd "ForgeKB AI - Agentic RAG System"
+	```
 
-LangGraph state flow drives retrieval before generation:
+2. **Set up environment variables**
+	```bash
+	cp backend/.env.example backend/.env
+	# Edit backend/.env and add OPENAI_API_KEY (and optional LangSmith keys)
+	```
 
-1. Analyze query intent (factual / analytical / balanced)
-2. Refine query and route retrieval strategy
-3. Retrieve contexts using hybrid search
-4. Score/rerank contexts and compute confidence
-5. Generate grounded answer with citations
-6. Stream structured events to UI
+3. **Start all services**
+	```bash
+	docker compose up -d --build
+	```
 
-## RAG Capabilities Implemented
+4. **Access the application**
+	- Frontend: http://localhost:3001
+	- Backend API Health: http://localhost:8001/api/health
+	- API Docs: http://localhost:8001/docs
 
-1. Multi-format ingestion: txt, md, pdf, docx
-2. Async ingestion pipeline with progress telemetry
-3. Recursive chunking for context windows
-4. Local embedding generation with sentence-transformers
-5. FAISS vector indexing and persistence
-6. BM25 keyword search
-7. Hybrid retrieval with weighted fusion scoring
-8. Query expansion (multi-query rewrite)
-9. Parent-context enrichment for better grounding
-10. Optional cross-encoder reranking
-11. Confidence scoring and abstention logic
-12. Citation generation for answer traceability
-13. SSE streaming endpoint with token/citation/confidence events
-14. History-aware prompting for multi-turn chat
-15. Same-file-name latest-version preference in retrieval
+### Option 2: Manual Setup
 
-## Role-Based Product Features
-
-### Admin
-
-- Admin console for validation chat
-- Dedicated knowledge base dashboard
-- Single upload + bulk upload
-- Single delete + multi-select delete
-- User management: promote/demote/offboard
-
-### User
-
-- Personal workspace and chat history
-- Upload and manage own files
-- Thread-by-thread chat deletion
-- Feedback submission on responses
-
-### Access Boundaries
-
-- Admin knowledge is global
-- User uploads are user-scoped
-- Metadata-aware retrieval and file operations
-
-## Project Structure
-
-- [backend](backend): FastAPI app, LangGraph/LangChain services, Celery tasks
-- [frontend](frontend): React dashboards for User/Admin workflows
-- [data/uploads](data/uploads): Uploaded documents
-- [data/faiss](data/faiss): Vector index and chunk manifest
-- [docker-compose.yml](docker-compose.yml): Local orchestration
-- [requirements.txt](requirements.txt): root Python requirements entrypoint
-
-## Setup and Run
-
-### 1. Configure Environment
-
-Set API key in [backend/.env](backend/.env):
-
-- OPENAI_API_KEY=your_key_here
-
-Optional for tracing:
-
-- LANGCHAIN_API_KEY=your_langsmith_key
-
-### 2. Start Full Stack
+#### Backend Setup
 
 ```bash
-docker compose up -d --build
+# from repository root
+python -m venv .venv
+
+# Linux/macOS
+source .venv/bin/activate
+
+# Windows PowerShell
+.venv\Scripts\Activate.ps1
+
+pip install -r requirements.txt
+cp backend/.env.example backend/.env
+
+cd backend
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### 3. Access
+Start Celery worker in a second terminal:
 
-- Frontend: http://localhost:3001
-- Backend Health: http://localhost:8001/api/health
+```bash
+cd backend
+celery -A app.worker.celery_app worker -Q ingestion --loglevel=info
+```
+
+#### Frontend Setup
+
+```bash
+cd frontend
+npm install
+
+# optional: override API base if not using docker defaults
+# set VITE_API_BASE=http://localhost:8000/api
+
+npm run dev
+```
+
+#### Start Redis and MySQL (if not using Docker Compose)
+
+```bash
+docker run -d -p 6380:6379 redis:7-alpine
+docker run -d -p 3307:3306 \
+  -e MYSQL_ROOT_PASSWORD=root_password \
+  -e MYSQL_DATABASE=rag_db \
+  -e MYSQL_USER=rag_user \
+  -e MYSQL_PASSWORD=rag_password \
+  mysql:8.4
+```
+
+If running backend locally, update `backend/.env` host/port values to match your local services.
+
+## Usage
+
+### 1. Register an Account
+Open the frontend and create a user account from the signup page.
+
+### 2. Sign In and Start Chatting
+Use the chat dashboard to ask questions against indexed knowledge.
+
+### 3. Upload Knowledge Sources
+- User role: upload personal/private documents
+- Admin role: upload global documents, including bulk upload support
+
+### 4. Monitor Ingestion Progress
+Track datasource status fields (`Pending`, `Indexing`, `Completed`, `Failed`) and progress telemetry.
+
+### 5. Review Retrieval Results
+Use SSE chat mode to receive token stream plus confidence and citation events.
+
+## Configuration
+
+### Backend Environment Variables (`backend/.env`)
+
+```env
+JWT_SECRET=change_me
+OPENAI_API_KEY=
+OPENAI_MODEL=gpt-4o-mini
+
+MYSQL_USER=rag_user
+MYSQL_PASSWORD=rag_password
+MYSQL_HOST=mysql
+MYSQL_PORT=3306
+MYSQL_DB=rag_db
+
+UPLOADS_DIR=/workspace/data/uploads
+FAISS_DIR=/workspace/data/faiss
+METADATA_STORE_PATH=/workspace/data/faiss/chunks_manifest.json
+EVAL_DATASET_PATH=/workspace/eval/eval_dataset.json
+
+REDIS_URL=redis://redis:6379/0
+CORS_ORIGINS=http://localhost:3000,http://localhost:3001
+
+LANGCHAIN_TRACING_V2=true
+LANGCHAIN_API_KEY=
+LANGCHAIN_PROJECT=smart-rag-local
+OTEL_ENABLED=false
+```
+
+### Frontend Environment Variables
+
+```env
+VITE_API_BASE=http://localhost:8001/api
+```
+
+## Quality Checks
+
+### Frontend
+```bash
+cd frontend
+npm run build
+```
+
+### Backend Import Check
+```bash
+cd backend
+python -c "import app.main; print('Backend import check passed')"
+```
 
 ## API Surface (Highlights)
 
-- Auth: /api/auth/register, /api/auth/login, /api/auth/me, /api/auth/logout
-- Chat: /api/chat, /api/chat/stream
-- History: /api/history/sessions, /api/history/sessions/{id}
-- Datasources: /api/datasources, /api/datasources/upload, /api/datasources/upload/bulk, /api/datasources/retry
-- Admin: /api/admin/users, /api/admin/users/{id}/role
-- Evaluation: /api/eval/run
+- Health: `GET /api/health`
+- Auth: `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me`, `POST /api/auth/logout`
+- Chat: `POST /api/chat`, `POST /api/chat/stream`
+- History: `GET /api/history/sessions`, `GET /api/history/sessions/{session_id}`, `DELETE /api/history/sessions/{session_id}`
+- Conversations: `GET /api/conversations`
+- Datasources: `GET /api/datasources`, `POST /api/datasources/upload`, `POST /api/datasources/upload/bulk`, `DELETE /api/datasources/{datasource_id}`, `POST /api/datasources/retry`, `GET /api/datasources/tasks/{task_id}`
+- Ingestion: `POST /api/ingest/upload`, `POST /api/ingest/run`
+- Admin: `GET /api/admin/users`, `PATCH /api/admin/users/{user_id}/role`, `DELETE /api/admin/users/{user_id}`
+- Feedback: `POST /api/feedback`
+- Evaluation: `GET /api/eval/run`
 
-## Why This Is Interview-Relevant
+## RAG Pipeline Capabilities
 
-- Shows practical Agentic AI implementation beyond prompt-only apps
-- Covers full lifecycle: ingestion, retrieval, orchestration, generation, streaming
-- Includes role-based product design and data governance patterns
-- Demonstrates production-aware engineering tradeoffs in a local-first setup
+### Ingestion
+- Multi-format loading: txt, md/markdown, pdf, docx
+- Recursive chunking with overlap
+- Incremental index updates and full rebuild fallback
+- Manifest persistence for documents/chunks and metadata
 
-## GenAI Engineer Profile Alignment
+### Retrieval
+- Query routing strategy (factual / analytical / balanced)
+- Query expansion using OpenAI model (when configured)
+- Hybrid semantic + keyword ranking with weighted fusion
+- Parent-context enrichment and confidence scoring
+- Optional cross-encoder reranking for final ordering
 
-This project demonstrates the full RAG lifecycle expected from a GenAI Engineer role:
+### Response Generation
+- Grounded answer synthesis from retrieved contexts
+- Citation metadata support
+- SSE event streaming for interactive chat UX
 
-- Ingestion and indexing: document parsing, chunking, embedding generation, FAISS indexing, lifecycle tracking.
-- Retrieval engineering: hybrid semantic + keyword search, query routing, query expansion, reranking, confidence scoring.
-- Agentic orchestration: LangGraph state flow for query analysis and retrieval strategy before generation.
-- LLM integration: LangChain-powered retrieval/generation with grounded prompting and citation-first answers.
-- API engineering: FastAPI services for auth, chat, history, ingestion, admin controls, and evaluation.
-- Asynchronous systems: Celery + Redis pipeline for background indexing and telemetry updates.
-- Product and governance: role-based access, admin/global knowledge controls, user-scoped private knowledge.
-- Observability and evaluation: structured streaming events, logs, and LangSmith-ready tracing hooks.
+## Acknowledgments
 
-Frameworks and tools used:
-
-- Python, FastAPI, SQLAlchemy
-- LangChain, LangGraph, LangSmith hooks
-- FAISS, rank-bm25, sentence-transformers
-- Celery, Redis, MySQL
-- React, Vite, Ant Design
-- Docker, Docker Compose
-
-## Skills Demonstrated (ATS-Friendly)
-
-Target role: Generative AI Engineer / LLM Engineer / Applied AI Engineer
-
-Keywords covered in this project:
-
-- Agentic AI, Retrieval-Augmented Generation (RAG), Hybrid Search
-- LangChain, LangGraph, LangSmith, Prompt Engineering
-- FastAPI, Python, SQLAlchemy, REST API Development
-- FAISS, BM25, Embeddings, Reranking, Citation Grounding
-- Asynchronous Processing, Celery, Redis, Background Jobs
-- MySQL, Data Modeling, Role-Based Access Control (RBAC)
-- SSE Streaming, Real-Time UX, Observability, Evaluation
-- Docker, Docker Compose, Local Production-Style Deployment
-
-Impact summary:
-
-- Designed and implemented an end-to-end Agentic RAG system from ingestion to grounded response streaming.
-- Built role-aware knowledge workflows with admin-global and user-private data boundaries.
-- Improved retrieval quality through query routing, expansion, score fusion, and optional reranking.
+- **LangChain** - LLM and retrieval building blocks
+- **LangGraph** - Agentic orchestration primitives
+- **FastAPI** - Backend framework
+- **React + Vite** - Frontend framework and tooling
+- **FAISS** - Local vector search engine
