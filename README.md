@@ -1,6 +1,6 @@
 # ForgeKB AI - Agentic RAG System
 
-
+>An AI-powered, role-aware RAG platform that combines FastAPI, LangGraph, LangChain, and Celery to deliver grounded, traceable answers from knowledge base.
 
 ![Project Status](https://img.shields.io/badge/status-active-green)
 
