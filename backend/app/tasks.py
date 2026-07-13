@@ -59,6 +59,8 @@ def ingest_datasource_task(self, datasource_id: int):
     db: Session = SessionLocal()
     try:
         _set_status(db, datasource_id, status="Indexing", progress_percent=10, stage="started", details={})
+        row = db.query(DocumentRegistry).filter(DocumentRegistry.id == datasource_id).first()
+        affected_sources = {row.file_path} if row and row.file_path else None
 
         def _progress_callback(percent: int, stage: str, details: dict | None = None):
             _set_status(
@@ -70,7 +72,10 @@ def ingest_datasource_task(self, datasource_id: int):
                 details=details or {},
             )
 
-        result = run_ingestion_pipeline(progress_callback=_progress_callback)
+        result = run_ingestion_pipeline(
+            progress_callback=_progress_callback,
+            affected_sources=affected_sources,
+        )
         _set_status(
             db,
             datasource_id,

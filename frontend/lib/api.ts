@@ -16,6 +16,13 @@ export type AuthResponse = {
   role: "admin" | "user" | string;
 };
 
+export type RegisterResponse = {
+  user_id: number;
+  email: string;
+  role: "admin" | "user" | string;
+  message: string;
+};
+
 export type UserProfile = {
   id: number;
   email: string;
@@ -64,7 +71,7 @@ export async function register(email: string, password: string, role: "admin" | 
     body: JSON.stringify({ email, password, role }),
   });
   if (!res.ok) throw new Error("Register failed");
-  return (await res.json()) as AuthResponse;
+  return (await res.json()) as RegisterResponse;
 }
 
 export async function login(email: string, password: string) {

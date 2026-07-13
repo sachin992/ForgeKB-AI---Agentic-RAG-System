@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.db.models import ChatMessage, ChatSession, User
 from app.services.rag.graph import graph_app
-from app.services.rag.guardrails import post_generation_guardrail, pre_generation_guardrail
+from app.services.rag.guardrails import post_generation_guardrail, pre_generation_guardrail, stream_window_guardrail
 
 
 async def stream_answer_events(
@@ -127,10 +127,18 @@ async def stream_answer_events(
     )
 
     full_answer = ""
+    stream_guardrail_blocked = False
     async for chunk in llm.astream(prompt):
         token = chunk.content or ""
-        full_answer += token
         if token:
+            candidate = full_answer + token
+            safe, blocked_message = stream_window_guardrail(candidate)
+            if not safe:
+                stream_guardrail_blocked = True
+                full_answer = blocked_message
+                yield {"event": "token", "token": blocked_message}
+                break
+            full_answer = candidate
             yield {"event": "token", "token": token}
 
     citations = [
@@ -155,6 +163,7 @@ async def stream_answer_events(
                 "route_strategy": graph_result.get("route_strategy", "balanced"),
                 "avg_confidence": avg_conf,
                 "abstained": False,
+                "stream_guardrail_blocked": stream_guardrail_blocked,
             }
         ),
     )

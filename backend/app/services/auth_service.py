@@ -23,11 +23,10 @@ def register_user(db: Session, email: str, password: str, requested_role: str = 
     db.refresh(user)
 
     return {
-        "access_token": create_access_token(user.email, user.role, user.id),
-        "token_type": "bearer",
         "user_id": user.id,
         "email": user.email,
         "role": user.role,
+        "message": "Registration successful. Please log in.",
     }
 
 

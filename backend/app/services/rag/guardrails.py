@@ -46,3 +46,14 @@ def post_generation_guardrail(answer: str, citations: list[dict]) -> str:
         answer = "[REDACTED_PII] " + answer
 
     return answer
+
+
+def stream_window_guardrail(candidate_text: str) -> tuple[bool, str]:
+    for pattern in OUTPUT_BLOCKLIST:
+        if pattern.search(candidate_text):
+            return False, "I cannot share sensitive credential-like data."
+
+    if detect_pii(candidate_text):
+        return False, "I cannot share personal sensitive data."
+
+    return True, ""

@@ -124,22 +124,24 @@ def offboard_user(
     )
     db.commit()
 
-    task_id = None
+    task_ids: list[str] = []
     if user_datasources:
-        task = ingest_datasource_task.delay(user_datasources[0].id)
-        row = db.query(DocumentRegistry).filter(DocumentRegistry.id == user_datasources[0].id).first()
-        if row:
-            row.task_id = task.id
-            row.status = "Indexing"
-            row.progress_percent = 5
-            row.stage = "queued"
-            db.add(row)
-            db.commit()
-        task_id = task.id
+        for ds in user_datasources:
+            task = ingest_datasource_task.delay(ds.id)
+            row = db.query(DocumentRegistry).filter(DocumentRegistry.id == ds.id).first()
+            if row:
+                row.task_id = task.id
+                row.status = "Indexing"
+                row.progress_percent = 5
+                row.stage = "queued"
+                db.add(row)
+            task_ids.append(task.id)
+        db.commit()
 
     return {
         "status": "offboarded",
         "user_id": offboard_id,
         "email": offboard_email,
-        "datasource_cleanup_task_id": task_id,
+        "datasource_cleanup_task_id": task_ids[0] if task_ids else None,
+        "datasource_cleanup_task_ids": task_ids,
     }

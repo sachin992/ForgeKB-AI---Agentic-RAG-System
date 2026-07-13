@@ -16,6 +16,20 @@ from app.db.models import DocumentRegistry
 from app.db.session import SessionLocal
 
 
+def _vector_ids_for_sources(store: FAISS, sources: set[str]) -> list[str]:
+    """Collect vector docstore ids that belong to the given sources."""
+    if not sources:
+        return []
+    docstore = getattr(store, "docstore", None)
+    doc_map = getattr(docstore, "_dict", {}) if docstore is not None else {}
+    ids: list[str] = []
+    for doc_id, doc in doc_map.items():
+        metadata = getattr(doc, "metadata", {}) or {}
+        if metadata.get("source", "") in sources:
+            ids.append(str(doc_id))
+    return ids
+
+
 def _loader_for_file(path: Path):
     suffix = path.suffix.lower()
     if suffix in {".txt", ".md", ".markdown"}:
@@ -89,7 +103,10 @@ def _chunk_meta_from_doc(doc_meta: dict, idx: int) -> dict:
     }
 
 
-def run_ingestion_pipeline(progress_callback: Callable[[int, str, dict | None], None] | None = None) -> dict:
+def run_ingestion_pipeline(
+    progress_callback: Callable[[int, str, dict | None], None] | None = None,
+    affected_sources: set[str] | None = None,
+) -> dict:
     uploads_dir = Path(settings.uploads_dir)
     uploads_dir.mkdir(parents=True, exist_ok=True)
 
@@ -109,10 +126,17 @@ def run_ingestion_pipeline(progress_callback: Callable[[int, str, dict | None], 
         old_chunks = old_manifest.get("chunks", [])
         old_chunk_sources = {c.get("source", "") for c in old_chunks}
 
-        files = [Path(row.file_path) for row in active_rows if Path(row.file_path).exists()]
+        if affected_sources is None:
+            target_sources = set(active_by_source.keys()) | {
+                src for src in old_docs.keys() if src and src not in active_by_source
+            }
+        else:
+            target_sources = {src for src in affected_sources if src}
+
+        files = [Path(src) for src in sorted(target_sources) if src in active_by_source and Path(src).exists()]
         total_files = len(files)
         if progress_callback:
-            progress_callback(10, "loading", {"total_files": total_files})
+            progress_callback(10, "loading", {"total_files": total_files, "target_sources": len(target_sources)})
 
         unchanged_sources: set[str] = set()
         new_sources: set[str] = set()
@@ -141,8 +165,7 @@ def run_ingestion_pipeline(progress_callback: Callable[[int, str, dict | None], 
                 pct = 10 + int((processed_files / total_files) * 50)
                 progress_callback(min(pct, 60), "chunking", {"file": path.name, "processed": processed_files})
 
-        deleted_sources = {src for src in old_docs.keys() if src not in active_by_source}
-        needs_full_rebuild = bool(modified_sources or deleted_sources)
+        deleted_sources = {src for src in target_sources if src in old_docs and src not in active_by_source}
 
         all_chunks: list[Document] = []
         documents: list[dict] = []
@@ -164,7 +187,7 @@ def run_ingestion_pipeline(progress_callback: Callable[[int, str, dict | None], 
         faiss_path = Path(settings.faiss_dir)
         has_index = faiss_path.exists() and (faiss_path / "index.faiss").exists()
 
-        # Fast path: no data change, keep existing vectors as-is.
+        # Fast path: no data change for targeted sources, keep existing vectors as-is.
         if not new_sources and not modified_sources and not deleted_sources and has_index:
             for source, doc_meta in old_docs.items():
                 if source in active_by_source:
@@ -179,29 +202,45 @@ def run_ingestion_pipeline(progress_callback: Callable[[int, str, dict | None], 
                 "skipped_existing_embeddings": len(unchanged_sources),
             }
 
-        # Incremental path: only brand new files are embedded and appended.
-        if new_sources and not needs_full_rebuild and has_index:
+        # Targeted incremental path: only affected sources are changed in FAISS + manifest.
+        if has_index:
             if progress_callback:
-                progress_callback(75, "embedding_incremental", {"new_files": len(new_sources)})
+                progress_callback(
+                    75,
+                    "embedding_incremental",
+                    {
+                        "new_files": len(new_sources),
+                        "modified_files": len(modified_sources),
+                        "deleted_files": len(deleted_sources),
+                    },
+                )
 
             store = FAISS.load_local(settings.faiss_dir, embeddings, allow_dangerous_deserialization=True)
             new_chunks: list[Document] = []
+            affected_for_reindex = set(new_sources) | set(modified_sources)
+            affected_for_removal = affected_for_reindex | set(deleted_sources)
 
-            for source in sorted(new_sources):
+            vector_ids = _vector_ids_for_sources(store, affected_for_removal)
+            if vector_ids:
+                store.delete(vector_ids)
+
+            for source in sorted(affected_for_reindex):
                 row = active_by_source[source]
                 split_docs, doc_meta = _load_split_docs(Path(source), row, row.file_hash)
                 documents.append(doc_meta)
                 new_chunks.extend(split_docs)
 
             for source, doc_meta in old_docs.items():
-                if source in unchanged_sources:
+                if source in affected_for_removal:
+                    continue
+                if source in active_by_source:
                     documents.append(doc_meta)
 
             if new_chunks:
                 store.add_documents(new_chunks)
-                store.save_local(settings.faiss_dir)
+            store.save_local(settings.faiss_dir)
 
-            manifest_chunks = [c for c in old_chunks if c.get("source", "") in unchanged_sources]
+            manifest_chunks = [c for c in old_chunks if c.get("source", "") not in affected_for_removal]
             manifest_chunks.extend(
                 [
                     {
@@ -222,7 +261,15 @@ def run_ingestion_pipeline(progress_callback: Callable[[int, str, dict | None], 
 
             db.commit()
             if progress_callback:
-                progress_callback(98, "finalizing", {"incremental": True, "new_chunks": len(new_chunks)})
+                progress_callback(
+                    98,
+                    "finalizing",
+                    {
+                        "incremental": True,
+                        "new_chunks": len(new_chunks),
+                        "removed_sources": len(affected_for_removal),
+                    },
+                )
             return {
                 "document_count": len(documents),
                 "chunk_count": len(manifest_chunks),
@@ -230,7 +277,7 @@ def run_ingestion_pipeline(progress_callback: Callable[[int, str, dict | None], 
                 "skipped_existing_embeddings": len(unchanged_sources),
             }
 
-        # Full rebuild path: required for deletions or modified files.
+        # Full rebuild path: cold start when index is missing.
         for row in active_rows:
             path = Path(row.file_path)
             if not path.exists() or not row.file_hash:

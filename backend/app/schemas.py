@@ -13,6 +13,13 @@ class RegisterRequest(BaseModel):
     role: str = "user"
 
 
+class RegisterResponse(BaseModel):
+    user_id: int
+    email: EmailStr
+    role: str
+    message: str
+
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"

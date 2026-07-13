@@ -107,6 +107,13 @@ def _clamp01(value: float) -> float:
     return max(0.0, min(1.0, value))
 
 
+def _distance_to_similarity(distance: float) -> float:
+    # FAISS returns distance-style scores for this index; lower is better.
+    # Convert to a bounded similarity in [0, 1] for stable fusion.
+    d = max(0.0, float(distance))
+    return 1.0 / (1.0 + d)
+
+
 def _can_view_chunk(chunk: dict, requester_user_id: int, requester_role: str) -> bool:
     visibility = (chunk.get("visibility") or "private").lower()
     if requester_role == "admin":
@@ -163,11 +170,11 @@ def hybrid_retrieve(query: str, k: int = 6, requester_user_id: int | None = None
     if faiss_path.exists() and (faiss_path / "index.faiss").exists() and chunks:
         embeddings = HuggingFaceEmbeddings(model_name=settings.embedding_model)
         store = FAISS.load_local(settings.faiss_dir, embeddings, allow_dangerous_deserialization=True)
-        docs = []
+        docs_with_scores = []
         for q in expanded_queries:
-            docs.extend(store.similarity_search(q, k=k))
+            docs_with_scores.extend(store.similarity_search_with_score(q, k=k))
         semantic_hits = []
-        for d in docs:
+        for d, distance in docs_with_scores:
             source = d.metadata.get("source", "")
             if allowed_sources and source not in allowed_sources:
                 continue
@@ -184,7 +191,7 @@ def hybrid_retrieve(query: str, k: int = 6, requester_user_id: int | None = None
                     "chunk_id": d.metadata.get("chunk_id", ""),
                     "source": d.metadata.get("source", ""),
                     "text": d.page_content,
-                    "semantic_score": 1.0,
+                    "semantic_score": _distance_to_similarity(float(distance)),
                     "owner_user_id": owner_user_id,
                     "visibility": visibility,
                 }
@@ -218,10 +225,17 @@ def hybrid_retrieve(query: str, k: int = 6, requester_user_id: int | None = None
         if chunk_id not in merged:
             merged[chunk_id] = item
         else:
+            if "semantic_score" in item and "semantic_score" in merged[chunk_id]:
+                item = dict(item)
+                item["semantic_score"] = max(float(merged[chunk_id]["semantic_score"]), float(item["semantic_score"]))
             merged[chunk_id].update(item)
 
     candidates = list(merged.values())[: max(2 * k, 10)]
-    norm_sem = _normalize_scores([c for c in candidates if "semantic_score" in c], "semantic_score")
+    norm_sem = {
+        c["chunk_id"]: _clamp01(float(c.get("semantic_score", 0.0)))
+        for c in candidates
+        if "semantic_score" in c
+    }
     norm_bm = _normalize_scores([c for c in candidates if "bm25_score" in c], "bm25_score")
     for c in candidates:
         c["fusion_score"] = (

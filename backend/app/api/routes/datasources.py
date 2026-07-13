@@ -277,10 +277,12 @@ def delete_datasource(datasource_id: int, db: Session = Depends(get_db), user: U
     )
     db.commit()
 
-    task = ingest_datasource_task.delay((deleted_ids[0] if deleted_ids else row.id))
+    task_ids: list[str] = []
     for r in rows_to_delete:
         if r.id not in deleted_ids:
             continue
+        task = ingest_datasource_task.delay(r.id)
+        task_ids.append(task.id)
         r.task_id = task.id
         r.status = "Indexing"
         r.progress_percent = 5
@@ -290,7 +292,8 @@ def delete_datasource(datasource_id: int, db: Session = Depends(get_db), user: U
 
     return {
         "status": "queued",
-        "task_id": task.id,
+        "task_id": task_ids[0] if task_ids else "",
+        "task_ids": task_ids,
         "deleted_count": len(deleted_ids),
         "display_name": display_name,
     }
