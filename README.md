@@ -167,6 +167,9 @@ ATS keywords: Generative AI, Agentic AI, RAG, LangChain, LangGraph, Prompt Engin
 
 4. **Access the application**
 	- Frontend: http://localhost:3001
+	- Frontend Login: http://localhost:3001/login
+	- Frontend Workspace: http://localhost:3001/workspace
+	- Admin Knowledge Base: http://localhost:3001/admin/knowledge-base
 	- Backend API Health: http://localhost:8001/api/health
 	- API Docs: http://localhost:8001/docs
 
@@ -230,7 +233,7 @@ If running backend locally, update `backend/.env` host/port values to match your
 Open the frontend and create a user account from the signup page.
 
 ### 2. Sign In and Start Chatting
-Use the chat dashboard to ask questions against indexed knowledge.
+Sign in at `http://localhost:3001/login`, then use `http://localhost:3001/workspace` to ask questions against indexed knowledge.
 
 ### 3. Upload Knowledge Sources
 - User role: upload personal/private documents
@@ -290,6 +293,22 @@ npm run build
 cd backend
 python -c "import app.main; print('Backend import check passed')"
 ```
+
+## Troubleshooting
+
+- **401 Unauthorized on `/api/auth/me` or `/api/history/sessions`**
+	- Your stored token is likely expired/invalid. Log out and sign in again.
+	- If needed, clear browser storage for `localhost:3001` and retry.
+
+- **Frontend not loading after code changes**
+	- Restart frontend container:
+		```bash
+		docker compose restart frontend
+		```
+	- Hard refresh browser (`Ctrl+F5`).
+
+- **`favicon.ico` 404 in browser console**
+	- This is non-blocking and does not affect app functionality.
 
 ## API Surface (Highlights)
 
